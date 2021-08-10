@@ -9,7 +9,11 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
+
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -109,7 +113,7 @@ public class VideoThumbnailPlugin implements FlutterPlugin, MethodCallHandler {
     }
 
     private byte[] buildThumbnailData(String vidPath, int format, int maxh, int maxw, int timeMs, int quality) {
-        Log.d(TAG, String.format("buildThumbnailData( format:%d, maxh:%d, maxw:%d, timeMs:%d, quality:%d )", format,
+        Log.d(TAG, String.format("buildThumbnailData( vidpath:%s format:%d, maxh:%d, maxw:%d, timeMs:%d, quality:%d )", vidPath, format,
                 maxh, maxw, timeMs, quality));
         Bitmap bitmap = createVideoThumbnail(vidPath, maxh, maxw, timeMs);
         if (bitmap == null)
@@ -194,9 +198,11 @@ public class VideoThumbnailPlugin implements FlutterPlugin, MethodCallHandler {
     public static Bitmap createVideoThumbnail(final String video, int targetH, int targetW, int timeMs) {
         Bitmap bitmap = null;
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        FileInputStream inputStream = null;
         try {
             if (video.startsWith("/")) {
-                retriever.setDataSource(video);
+                inputStream = new FileInputStream(video);
+                retriever.setDataSource(inputStream.getFD());
             } else if (video.startsWith("file://")) {
                 retriever.setDataSource(video.substring(7));
             } else {
@@ -229,11 +235,20 @@ public class VideoThumbnailPlugin implements FlutterPlugin, MethodCallHandler {
             ex.printStackTrace();
         } catch (RuntimeException ex) {
             ex.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             try {
                 retriever.release();
+                if (inputStream != null) {
+                    inputStream.close();
+                }
             } catch (RuntimeException ex) {
                 ex.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
